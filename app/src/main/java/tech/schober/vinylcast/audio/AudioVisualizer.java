@@ -3,7 +3,6 @@ package tech.schober.vinylcast.audio;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
-import android.util.Log;
 
 import java.io.InputStream;
 import java.util.Arrays;

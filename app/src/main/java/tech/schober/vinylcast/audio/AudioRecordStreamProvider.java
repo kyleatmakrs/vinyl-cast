@@ -1,6 +1,5 @@
 package tech.schober.vinylcast.audio;
 
-import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.IntDef;
@@ -13,6 +12,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import tech.schober.vinylcast.utils.VinylCastHelpers;
+import timber.log.Timber;
 
 public class AudioRecordStreamProvider implements AudioStreamProvider {
 
@@ -38,14 +38,14 @@ public class AudioRecordStreamProvider implements AudioStreamProvider {
     }
 
     public boolean start() {
-        Log.d(TAG, "start");
+        Timber.d("start");
 
         boolean preparedSuccess = NativeAudioEngine.prepareRecording();
         if (!preparedSuccess) {
-            Log.w(TAG, "Failed to Prepare to Record.");
+            Timber.w("Failed to Prepare to Record.");
             return false;
         }
-        Log.d(TAG, "Prepared to Record - sampleRate: " + NativeAudioEngine.getSampleRate() +", channel count: " + NativeAudioEngine.getChannelCount());
+        Timber.d("Prepared to Record - sampleRate: %d, channel count: %d", NativeAudioEngine.getSampleRate(), NativeAudioEngine.getChannelCount());
 
         // callback from NativeAudioEngine with audioData will end up on own thread
         NativeAudioEngine.setAudioDataListener(new NativeAudioEngineListener() {
@@ -57,13 +57,13 @@ public class AudioRecordStreamProvider implements AudioStreamProvider {
                         writeStream.write(audioData);
                         writeStream.flush();
                     } catch (IOException e) {
-                        Log.w(TAG, "Exception writing to raw audio output stream. Removing from list of streams.", e);
+                        Timber.w(e,"Exception writing to raw audio output stream. Removing from list of streams.");
                         nativeAudioWriteStreams.remove(writeStream);
                     }
                 }
 
                 if (nativeAudioWriteStreams.isEmpty()) {
-                    Log.e(TAG, "No open write streams.");
+                    Timber.e("No open write streams.");
                 }
             }
         });
@@ -72,7 +72,7 @@ public class AudioRecordStreamProvider implements AudioStreamProvider {
     }
 
     public boolean stop() {
-        Log.d(TAG, "stop");
+        Timber.d("stop");
 
         try {
             for (OutputStream writeStream : nativeAudioWriteStreams) {
@@ -80,7 +80,7 @@ public class AudioRecordStreamProvider implements AudioStreamProvider {
                 writeStream.close();
             }
         } catch (IOException e) {
-            Log.e(TAG, "Exception closing streams", e);
+            Timber.e(e, "Exception closing streams");
         }
 
         return NativeAudioEngine.stopRecording();
@@ -88,12 +88,12 @@ public class AudioRecordStreamProvider implements AudioStreamProvider {
 
     @Override
     public InputStream getAudioInputStream() {
-        Log.d(TAG, "getAudioInputStream");
+        Timber.d("getAudioInputStream");
         Pair<OutputStream, InputStream> audioStreams;
         try {
             audioStreams = VinylCastHelpers.getPipedAudioStreams(bufferSize);
         } catch (IOException e) {
-            Log.e(TAG, "Exception creating audio stream", e);
+            Timber.e(e, "Exception creating audio stream");
             return null;
         }
         nativeAudioWriteStreams.add(audioStreams.first);

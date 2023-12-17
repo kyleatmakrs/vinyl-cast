@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -199,10 +198,10 @@ public class MainActivity extends VinylCastActivity implements VinylCastService.
         switch (requestCode) {
             case RECORD_REQUEST_CODE: {
                 if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                    Log.i(TAG, "Permission has been denied by user");
+                    Timber.i("Permission has been denied by user");
                     onStatusUpdate(STATUS_ERROR_PERMISSION_DENIED);
                 } else {
-                    Log.i(TAG, "Permission has been granted by user");
+                    Timber.i("Permission has been granted by user");
                     startRecordingButtonClicked();
                 }
                 return;

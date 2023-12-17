@@ -4,6 +4,9 @@ import android.app.Application;
 import android.os.StrictMode;
 import android.util.Log;
 
+import timber.log.Timber;
+import timber.log.Timber.DebugTree;
+
 public class VinylCastApplicationBase extends Application {
     private static final String TAG = "VinylCastApplicationBase";
     private static final boolean STRICT_MODE = false;
@@ -25,6 +28,12 @@ public class VinylCastApplicationBase extends Application {
                     .penaltyLog()
                     .penaltyDeath()
                     .build());
+        }
+        if (BuildConfig.DEBUG) {
+            Timber.plant(new Timber.DebugTree());
+            Timber.d("Timber logging enabled.");
+        } else {
+            Log.d(TAG, "Timber logging disabled.");
         }
     }
 }

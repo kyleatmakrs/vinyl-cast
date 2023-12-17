@@ -1,7 +1,6 @@
 package tech.schober.vinylcast.server;
 
 import android.content.Context;
-import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.StringDef;

@@ -4,7 +4,6 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Process;
-import android.util.Log;
 import android.util.Pair;
 
 import org.apache.commons.io.IOUtils;
@@ -16,6 +15,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 import tech.schober.vinylcast.utils.VinylCastHelpers;
+import timber.log.Timber;
 
 /**
  * Runnable used to convert raw PCM audio data from rawAudioInputStream to an AAC ADTS input stream.
@@ -49,7 +49,7 @@ public class ConvertAudioStreamProvider implements Runnable, AudioStreamProvider
         this.inputAudioStream = rawAudioStream.getAudioInputStream();
         this.sampleRate = rawAudioStream.getSampleRate();
         this.channelCount = rawAudioStream.getChannelCount();
-        Log.d(TAG, "ConvertAudioTask - sampleRate: " + sampleRate +", channel count: " + channelCount);
+        Timber.d("ConvertAudioTask - sampleRate: %d, channel count: %d", sampleRate, channelCount);
 
         Pair<OutputStream, InputStream> convertedAudioStreams = VinylCastHelpers.getPipedAudioStreams(bufferSize);
         this.convertedAudioWriteStream = convertedAudioStreams.first;
@@ -128,7 +128,7 @@ public class ConvertAudioStreamProvider implements Runnable, AudioStreamProvider
 
     @Override
     public void run() {
-        Log.d(TAG, "starting...");
+        Timber.d("starting...");
         Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
 
         MediaFormat format = MediaFormat.createAudioFormat(CODEC_MIME_TYPE, sampleRate, channelCount);
@@ -140,7 +140,7 @@ public class ConvertAudioStreamProvider implements Runnable, AudioStreamProvider
         try {
             codec = MediaCodec.createEncoderByType(CODEC_MIME_TYPE);
         } catch (IOException e) {
-            Log.e(TAG, "Exception creating codec", e);
+            Timber.e(e, "Exception creating codec");
             return;
         }
         codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
@@ -158,11 +158,11 @@ public class ConvertAudioStreamProvider implements Runnable, AudioStreamProvider
                     int size = queueCodecInputBuffer(codec, bufferId);
                     numBytesSubmitted += size;
                     if (CODEC_VERBOSE && size > 0) {
-                        Log.d(TAG, "queued " + size + " bytes of input data.");
+                        Timber.d("queued %d bytes of input data.", size);
                     }
                 }
             } catch (IOException e) {
-                Log.e(TAG, "Exception queuing input buffer. Queuing End Of Stream.", e);
+                Timber.e(e, "Exception queuing input buffer. Queuing End Of Stream.");
                 codec.queueInputBuffer(bufferId, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
             }
 
@@ -170,7 +170,7 @@ public class ConvertAudioStreamProvider implements Runnable, AudioStreamProvider
             MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
             bufferId = codec.dequeueOutputBuffer(info, CODEC_TIMEOUT);
             if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) == MediaCodec.BUFFER_FLAG_END_OF_STREAM) {
-                Log.d(TAG, "Dequeued End Of Stream.");
+                Timber.d("Dequeued End Of Stream.");
                 break;
             } else {
                 try {
@@ -178,22 +178,21 @@ public class ConvertAudioStreamProvider implements Runnable, AudioStreamProvider
                         int outBitsSize = dequeueCodecOutputBuffer(codec, bufferId, info);
                         numBytesDequeued += outBitsSize;
                         if (CODEC_VERBOSE) {
-                            Log.d(TAG, "  dequeued " + outBitsSize + " bytes of output data.");
+                            Timber.d("  dequeued " + outBitsSize + " bytes of output data.");
                         }
                     }
                 } catch (InterruptedIOException e) {
-                    Log.d(TAG, "interrupted");
+                    Timber.d("interrupted");
                     break;
                 } catch (IOException e) {
-                    Log.e(TAG, "Exception dequeuing output buffer", e);
+                    Timber.e(e, "Exception dequeuing output buffer");
                     break;
                 }
             }
         }
 
         if (CODEC_VERBOSE) {
-            Log.d(TAG, "queued a total of " + numBytesSubmitted + "bytes, "
-                    + "dequeued " + numBytesDequeued + " bytes.");
+            Timber.d("queued a total of %d bytes, dequeued %d bytes.", numBytesSubmitted, numBytesDequeued);
         }
         int sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE);
         int channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
@@ -202,17 +201,16 @@ public class ConvertAudioStreamProvider implements Runnable, AudioStreamProvider
         float desiredRatio = (float) outBitrate / (float) inBitrate;
         float actualRatio = (float) numBytesDequeued / (float) numBytesSubmitted;
         if (actualRatio < 0.9 * desiredRatio || actualRatio > 1.1 * desiredRatio) {
-            Log.w(TAG, "desiredRatio = " + desiredRatio
-                    + ", actualRatio = " + actualRatio);
+            Timber.w("desiredRatio = %f, actualRatio = %f", desiredRatio, actualRatio);
         }
         codec.stop();
         codec.release();
 
-        Log.d(TAG, "stopping...");
+        Timber.d("stopping...");
         try {
             convertedAudioWriteStream.close();
         } catch (IOException e) {
-            Log.e(TAG, "Exception closing streams", e);
+            Timber.e(e, "Exception closing streams");
         }
     }
 
